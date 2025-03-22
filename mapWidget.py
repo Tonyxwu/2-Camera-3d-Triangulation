@@ -8,7 +8,7 @@ from PySide6 import QtCore
 import struct
 import cv2
 import numpy as np
-
+import math
 
 import keyboard
 class MapWidget(QWidget):
@@ -19,7 +19,7 @@ class MapWidget(QWidget):
     #             Qt.KeepAspectRatio,  # Maintains aspect ratio
     #             Qt.SmoothTransformation  # High-quality scaling
     #         )
-    def __init__(self, newImageWidth):#if alliance false = red, alliance true = blue
+    def __init__(self, newImageWidth):
         super().__init__()
  
 
@@ -30,15 +30,15 @@ class MapWidget(QWidget):
         self.view = QGraphicsView(self.scene)
         self.idealImageWidth = newImageWidth
         self.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        meterToPixel = 60
+        meterToPixel = 60.0
         self.cam1X = 8 * meterToPixel
         self.cam1Y = 4 * meterToPixel
         self.cam1Z = 1 * meterToPixel
-        self.cam1theta = 90 #in degrees
-        self.cam2X = 8 * meterToPixel
-        self.cam2Y = 4.5 * meterToPixel
+        self.cam1theta = 0.0 #in degrees
+        self.cam2X = 8.5 * meterToPixel
+        self.cam2Y = 4 * meterToPixel
         self.cam2Z = 1 * meterToPixel
-        self.cam2theta = 90 #in degrees
+        self.cam2theta = 0.0 #in degrees
         self.mapPixmap = QPixmap('./room.png')
         self.mapPixmap = self.mapPixmap.scaled(
                 self.idealImageWidth,
@@ -70,7 +70,7 @@ class MapWidget(QWidget):
         self.robot2.setTransformOriginPoint(self.cameraPixmap.width() / 2, self.cameraPixmap.height() / 2)
         self.robot2.setPos(self.cam2Y,self.cam2X)
         self.object = self.scene.addPixmap(self.objectPixmap)
-        self.object.setTransformOriginPoint(self.cameraPixmap.width() / 2, self.cameraPixmap.height() / 2)#self.cameraPixmap.width() / 2
+        self.object.setTransformOriginPoint(self.cameraPixmap.width() / 2, self.cameraPixmap.height() / 2) #self.cameraPixmap.width() / 2
 
         #map.setPos(QPointF(0,0))
         self.mapItem.setRotation(0)
@@ -105,17 +105,37 @@ class MapWidget(QWidget):
         self.timer.start(1)
 
 
-      Meters, and Radians
-    def hardMaths(self, cam1X,cam1Y, cam1Z, cam1Rot, objectThetaFromCam1, objectPhiFromCam1
-                      , cam2X, cam2Y,cam2Z, cam2Rot, objectThetaFromCam2, objectPhiFromCam2)
-        objectX = ???
-        objectY = ???
-        objectZ = ???
 
 
-        return ([objectX,objectY,objectZ])
+    # Meters and Degrees
+    def hardMaths(self, cam1X, cam1Y, cam1Z, cam1Rot, objectThetaC1A, objectThetaC1B,
+                        cam2X, cam2Y, cam2Z, cam2Rot, objectThetaC2A, objectThetaC2B):
+        try:
+            # convert absolute coordinates to relative position
+            dx = cam2X - cam1X
+            # for purposes of this project cam1Y=cam2Y
+            dz = cam2Z - cam1Z
 
-        
+            # convert rel objectTheta from C1 -> abs objectTheta from normal in XY
+            k1 = cam1Rot + objectThetaC1A
+            k2 = cam2Rot + objectThetaC2A
+            # solve system of equations for intersecting lines (XY -> X, Y)
+            objectX = dx/(1-(math.tan(math.radians(k1))/math.tan(math.radians(k2))))
+            objectYfromXY = objectX * math.tan(math.radians(k1))
+
+            # solve system of equations for intersecting lines (YZ -> Y, Z)
+            objectYfromYZ = dz/(math.tan(math.radians(objectThetaC2B))-math.tan(math.radians(objectThetaC1B)))
+            objectZ = objectYfromYZ * math.tan(math.radians(objectThetaC1B))
+
+            objectY = (objectYfromXY+objectYfromYZ)/2
+            # moves origin (0,0,0) from CAM1 to defined gamefield origin
+            return([objectX+cam1X, objectY+cam1Y, objectZ+cam1Z])
+        except:
+            return([-1,-1,-1])
+
+
+
+
     def cameraStuff(self, frame,cameraItem,robot,camAngle):
         height, width, channels = frame.shape
         # if not ret:
@@ -141,8 +161,8 @@ class MapWidget(QWidget):
                 # Filter based on circularity and area
                 
                     #print (width/2-x,height/2-y)
-            self.angle = ((width/2-x)/(width/2)*35)
-            self.azimuth = ((height/2-y)/(height/2)*(47/2))
+            self.angle = ((width/2-x)/(width/2)*35.0)
+            self.azimuth = ((height/2-y)/(height/2)*(47.5/2))
 
             cv2.circle(frame, center, radius, (0, 255, 0), 2)
 
