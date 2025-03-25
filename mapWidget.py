@@ -10,10 +10,6 @@ import cv2
 import numpy as np
 import math
 
-<<<<<<< Updated upstream
-import keyboard
-=======
->>>>>>> Stashed changes
 class MapWidget(QWidget):
     #the origin 
         
@@ -33,17 +29,6 @@ class MapWidget(QWidget):
         self.view = QGraphicsView(self.scene)
         self.idealImageWidth = newImageWidth
         self.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-<<<<<<< Updated upstream
-        meterToPixel = 60.0
-        self.cam1X = 8 * meterToPixel
-        self.cam1Y = 4 * meterToPixel
-        self.cam1Z = 1 * meterToPixel
-        self.cam1theta = 0.0 #in degrees
-        self.cam2X = 8.5 * meterToPixel
-        self.cam2Y = 4 * meterToPixel
-        self.cam2Z = 1 * meterToPixel
-        self.cam2theta = 0.0 #in degrees
-=======
         self.meterToPixel = 60.0
         self.cam1X = 5
         self.cam1Y = 1
@@ -53,7 +38,6 @@ class MapWidget(QWidget):
         self.cam2Y = 1
         self.cam2Z = 1
         self.cam2rot = 0 #in degrees
->>>>>>> Stashed changes
         self.mapPixmap = QPixmap('./room.png')
         self.mapPixmap = self.mapPixmap.scaled(
                 self.idealImageWidth,
@@ -101,11 +85,7 @@ class MapWidget(QWidget):
 
 
         self.object = self.scene.addPixmap(self.objectPixmap)
-<<<<<<< Updated upstream
-        self.object.setTransformOriginPoint(self.cameraPixmap.width() / 2, self.cameraPixmap.height() / 2) #self.cameraPixmap.width() / 2
-=======
         self.object.setTransformOriginPoint(self.objectPixmap.width() / 2, self.objectPixmap.height() / 2) #self.cameraPixmap.width() / 2
->>>>>>> Stashed changes
 
         #map.setPos(QPointF(0,0))
         self.mapItem.setRotation(0)
@@ -197,13 +177,8 @@ class MapWidget(QWidget):
                 # Filter based on circularity and area
                 
                     #print (width/2-x,height/2-y)
-<<<<<<< Updated upstream
-            self.angle = ((width/2-x)/(width/2)*35.0)
-            self.azimuth = ((height/2-y)/(height/2)*(47.5/2))
-=======
             objangle = ((width/2-x)/(width/2)*35.0)
             objazimuth = ((height/2-y)/(height/2)*(47.5/2))
->>>>>>> Stashed changes
 
             cv2.circle(frame, center, radius, (0, 255, 0), 2)
 
