@@ -10,7 +10,10 @@ import cv2
 import numpy as np
 import math
 
+<<<<<<< Updated upstream
 import keyboard
+=======
+>>>>>>> Stashed changes
 class MapWidget(QWidget):
     #the origin 
         
@@ -30,6 +33,7 @@ class MapWidget(QWidget):
         self.view = QGraphicsView(self.scene)
         self.idealImageWidth = newImageWidth
         self.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+<<<<<<< Updated upstream
         meterToPixel = 60.0
         self.cam1X = 8 * meterToPixel
         self.cam1Y = 4 * meterToPixel
@@ -39,6 +43,17 @@ class MapWidget(QWidget):
         self.cam2Y = 4 * meterToPixel
         self.cam2Z = 1 * meterToPixel
         self.cam2theta = 0.0 #in degrees
+=======
+        self.meterToPixel = 60.0
+        self.cam1X = 5
+        self.cam1Y = 1
+        self.cam1Z = 1
+        self.cam1rot = 0 #in degrees
+        self.cam2X = 4
+        self.cam2Y = 1
+        self.cam2Z = 1
+        self.cam2rot = 0 #in degrees
+>>>>>>> Stashed changes
         self.mapPixmap = QPixmap('./room.png')
         self.mapPixmap = self.mapPixmap.scaled(
                 self.idealImageWidth,
@@ -48,6 +63,8 @@ class MapWidget(QWidget):
             )
 
         self.cameraPixmap = QPixmap('./camera.png')
+        self.cameraObjectPixmap = QPixmap('./cameraObj.png')
+
         self.objectPixmap = QPixmap('./object.png')
         if self.cameraPixmap.isNull():
             print("Failed to load robot image!")
@@ -64,13 +81,31 @@ class MapWidget(QWidget):
         map = self.scene.addItem(self.mapItem)
         self.robot = self.scene.addPixmap(self.cameraPixmap)
         self.robot.setTransformOriginPoint(0, self.cameraPixmap.height() / 2)#self.cameraPixmap.width() / 2
-        self.robot.setPos(self.cam1Y,self.cam1X)
+        self.robot.setPos(self.cam1Y * self.meterToPixel,self.cam1X * self.meterToPixel)
+
+        self.camera1 = self.scene.addPixmap(self.cameraObjectPixmap)
+        self.camera1.setTransformOriginPoint(self.cameraObjectPixmap.width() / 2, self.cameraObjectPixmap.height() / 2)#
+        self.camera1.setPos(self.cam1Y * self.meterToPixel-self.cameraObjectPixmap.width() / 2,
+                            self.cam1X * self.meterToPixel-self.cameraObjectPixmap.height() / 2)
+        self.camera1.setRotation(-self.cam1rot)
 
         self.robot2 = self.scene.addPixmap(self.cameraPixmap)
-        self.robot2.setTransformOriginPoint(self.cameraPixmap.width() / 2, self.cameraPixmap.height() / 2)
-        self.robot2.setPos(self.cam2Y,self.cam2X)
+        self.robot2.setTransformOriginPoint(0, self.cameraPixmap.height() / 2)
+        self.robot2.setPos(self.cam2Y * self.meterToPixel,self.cam2X * self.meterToPixel)
+
+        self.camera2 = self.scene.addPixmap(self.cameraObjectPixmap)
+        self.camera2.setTransformOriginPoint(self.cameraObjectPixmap.width() / 2, self.cameraObjectPixmap.height() / 2)#
+        self.camera2.setPos(self.cam2Y * self.meterToPixel-self.cameraObjectPixmap.width() / 2
+                            ,self.cam2X * self.meterToPixel-self.cameraObjectPixmap.height() / 2)
+        self.camera2.setRotation(-self.cam2rot)
+
+
         self.object = self.scene.addPixmap(self.objectPixmap)
+<<<<<<< Updated upstream
         self.object.setTransformOriginPoint(self.cameraPixmap.width() / 2, self.cameraPixmap.height() / 2) #self.cameraPixmap.width() / 2
+=======
+        self.object.setTransformOriginPoint(self.objectPixmap.width() / 2, self.objectPixmap.height() / 2) #self.cameraPixmap.width() / 2
+>>>>>>> Stashed changes
 
         #map.setPos(QPointF(0,0))
         self.mapItem.setRotation(0)
@@ -146,7 +181,8 @@ class MapWidget(QWidget):
         edgedImage = cv2.Canny(blackAndWhiteImage, 50, 150)
 
         contours, _ = cv2.findContours(edgedImage, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
+        objangle = 0
+        objazimuth = 0
         # Loop through contours and detect circles
         for contour in contours:
             (x, y), radius = cv2.minEnclosingCircle(contour)
@@ -161,8 +197,13 @@ class MapWidget(QWidget):
                 # Filter based on circularity and area
                 
                     #print (width/2-x,height/2-y)
+<<<<<<< Updated upstream
             self.angle = ((width/2-x)/(width/2)*35.0)
             self.azimuth = ((height/2-y)/(height/2)*(47.5/2))
+=======
+            objangle = ((width/2-x)/(width/2)*35.0)
+            objazimuth = ((height/2-y)/(height/2)*(47.5/2))
+>>>>>>> Stashed changes
 
             cv2.circle(frame, center, radius, (0, 255, 0), 2)
 
@@ -185,15 +226,22 @@ class MapWidget(QWidget):
         camViewPixmap = QPixmap.fromImage(cvtToQtFormat)
 
         cameraItem.setPixmap(camViewPixmap)
-        robot.setRotation(-camAngle + self.angle)
+        robot.setRotation(-camAngle - objangle)
+        return ([objangle,objazimuth])
         # Release the capture
         # cap.release()
         # cv2.destroyAllWindows()
     def displayStream(self):
+        
         # Read a frame from the camera
         ret, frame = self.cap.read()
         ret, frame2 = self.cap2.read()
-        self.cameraStuff(frame,self.cameraItem,self.robot,self.cam1theta)
-        self.cameraStuff(frame2,self.cameraItem2,self.robot2,self.cam2theta)
+        objectThetaC1A,objectThetaC1B = self.cameraStuff(frame,self.cameraItem,self.robot,self.cam1rot)
+        objectThetaC2A,objectThetaC2B = self.cameraStuff(frame2,self.cameraItem2,self.robot2,self.cam2rot)
+        objectX,objectY,objectZ = self.hardMaths(self.cam1X, self.cam1Y, self.cam1Z, self.cam1rot, objectThetaC1A, objectThetaC1B,
+                        self.cam2X, self.cam2Y, self.cam2Z, self.cam2rot, objectThetaC2A, objectThetaC2B)
+        #print(objectX, objectY, objectZ)
+        print (objectThetaC1A,objectThetaC1B)
+        self.object.setPos(objectY*self.meterToPixel,objectX*self.meterToPixel)
         self.timer.start(1)
 
