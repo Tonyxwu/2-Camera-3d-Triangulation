@@ -29,16 +29,17 @@ class MapWidget(QWidget):
         self.view = QGraphicsView(self.scene)
         self.idealImageWidth = newImageWidth
         self.view.setAlignment(Qt.AlignLeft | Qt.AlignTop)
-        self.meterToPixel = 60.0
-        self.cam1X = 5
-        self.cam1Y = 1
-        self.cam1Z = 1
-        self.cam1rot = 0 #in degrees
-        self.cam2X = 4
-        self.cam2Y = 1
-        self.cam2Z = 1
-        self.cam2rot = 0 #in degrees
+        self.meterToPixel = 60.
+        self.cam1X = 3.
+        self.cam1Y = 3.
+        self.cam1Z = 3.
+        self.cam1rot = 90. #in degrees
+        self.cam2X = 3+0.375
+        self.cam2Y = 3.
+        self.cam2Z = 3-0.18
+        self.cam2rot = 90. #in degrees
         self.mapPixmap = QPixmap('./room.png')
+        self.view.setSceneRect(0,0,600,600)
         self.mapPixmap = self.mapPixmap.scaled(
                 self.idealImageWidth,
                 10000,
@@ -48,7 +49,7 @@ class MapWidget(QWidget):
 
         self.cameraPixmap = QPixmap('./camera.png')
         self.cameraObjectPixmap = QPixmap('./cameraObj.png')
-
+        self.fovPixmap = QPixmap('./fov.png')
         self.objectPixmap = QPixmap('./object.png')
         if self.cameraPixmap.isNull():
             print("Failed to load robot image!")
@@ -64,8 +65,15 @@ class MapWidget(QWidget):
         
         map = self.scene.addItem(self.mapItem)
         self.robot = self.scene.addPixmap(self.cameraPixmap)
-        self.robot.setTransformOriginPoint(0, self.cameraPixmap.height() / 2)#self.cameraPixmap.width() / 2
-        self.robot.setPos(self.cam1Y * self.meterToPixel,self.cam1X * self.meterToPixel)
+        self.robot.setTransformOriginPoint(self.cameraPixmap.width() / 2, 0)#self.cameraPixmap.height() / 2
+        self.robot.setPos(self.cam1Y * self.meterToPixel-self.cameraPixmap.width()/2,self.cam1X * self.meterToPixel)
+
+
+        self.fov1 = self.scene.addPixmap(self.fovPixmap)
+        self.fov1.setTransformOriginPoint(self.fovPixmap.width() / 2, 0)#
+        self.fov1.setPos(self.cam1Y * self.meterToPixel-self.fovPixmap.width() / 2,
+                        self.cam1X * self.meterToPixel)
+        self.fov1.setRotation(-self.cam1rot)
 
         self.camera1 = self.scene.addPixmap(self.cameraObjectPixmap)
         self.camera1.setTransformOriginPoint(self.cameraObjectPixmap.width() / 2, self.cameraObjectPixmap.height() / 2)#
@@ -73,9 +81,18 @@ class MapWidget(QWidget):
                             self.cam1X * self.meterToPixel-self.cameraObjectPixmap.height() / 2)
         self.camera1.setRotation(-self.cam1rot)
 
+
         self.robot2 = self.scene.addPixmap(self.cameraPixmap)
-        self.robot2.setTransformOriginPoint(0, self.cameraPixmap.height() / 2)
-        self.robot2.setPos(self.cam2Y * self.meterToPixel,self.cam2X * self.meterToPixel)
+        self.robot2.setTransformOriginPoint(self.cameraPixmap.width() / 2, 0)
+        self.robot2.setPos(self.cam2Y * self.meterToPixel-self.cameraPixmap.width()/2,self.cam2X * self.meterToPixel)
+
+
+
+        self.fov2 = self.scene.addPixmap(self.fovPixmap)
+        self.fov2.setTransformOriginPoint(self.fovPixmap.width() / 2, 0)#
+        self.fov2.setPos(self.cam2Y * self.meterToPixel-self.fovPixmap.width() / 2,
+                        self.cam2X * self.meterToPixel)
+        self.fov2.setRotation(-self.cam1rot)
 
         self.camera2 = self.scene.addPixmap(self.cameraObjectPixmap)
         self.camera2.setTransformOriginPoint(self.cameraObjectPixmap.width() / 2, self.cameraObjectPixmap.height() / 2)#
@@ -125,6 +142,8 @@ class MapWidget(QWidget):
     # Meters and Degrees
     def hardMaths(self, cam1X, cam1Y, cam1Z, cam1Rot, objectThetaC1A, objectThetaC1B,
                         cam2X, cam2Y, cam2Z, cam2Rot, objectThetaC2A, objectThetaC2B):
+        if (cam1X==cam2X) or (cam1Z==cam2Z):
+            return([-2,-2,-2])
         try:
             # convert absolute coordinates to relative position
             dx = cam2X - cam1X
@@ -139,10 +158,10 @@ class MapWidget(QWidget):
             objectYfromXY = objectX * math.tan(math.radians(k1))
 
             # solve system of equations for intersecting lines (YZ -> Y, Z)
-            objectYfromYZ = dz/(math.tan(math.radians(objectThetaC2B))-math.tan(math.radians(objectThetaC1B)))
+            objectYfromYZ = -dz/(math.tan(math.radians(objectThetaC2B))-math.tan(math.radians(objectThetaC1B)))
             objectZ = objectYfromYZ * math.tan(math.radians(objectThetaC1B))
 
-            objectY = (objectYfromXY+objectYfromYZ)/2
+            objectY = (3*objectYfromXY+objectYfromYZ)/4
             # moves origin (0,0,0) from CAM1 to defined gamefield origin
             return([objectX+cam1X, objectY+cam1Y, objectZ+cam1Z])
         except:
@@ -206,6 +225,7 @@ class MapWidget(QWidget):
         # Release the capture
         # cap.release()
         # cv2.destroyAllWindows()
+
     def displayStream(self):
         
         # Read a frame from the camera
@@ -215,8 +235,11 @@ class MapWidget(QWidget):
         objectThetaC2A,objectThetaC2B = self.cameraStuff(frame2,self.cameraItem2,self.robot2,self.cam2rot)
         objectX,objectY,objectZ = self.hardMaths(self.cam1X, self.cam1Y, self.cam1Z, self.cam1rot, objectThetaC1A, objectThetaC1B,
                         self.cam2X, self.cam2Y, self.cam2Z, self.cam2rot, objectThetaC2A, objectThetaC2B)
-        #print(objectX, objectY, objectZ)
-        print (objectThetaC1A,objectThetaC1B)
-        self.object.setPos(objectY*self.meterToPixel,objectX*self.meterToPixel)
-        self.timer.start(1)
+        
 
+        # print(objectX, objectY, objectZ)
+        print(round(objectX, 2), round(objectY, 2), round(objectZ, 2))
+
+        if (objectX > 0 and objectY > 0):
+            self.object.setPos(objectY*self.meterToPixel - self.objectPixmap.width()/2,objectX*self.meterToPixel - self.objectPixmap.width()/2)
+        self.timer.start(100)
